@@ -1,171 +1,253 @@
 <!DOCTYPE html>
 <html lang="id">
 <head>
-  <meta charset="UTF-8" />
-  <title>BlueStream</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta name="description" content="Streaming film dan series gratis">
-  <style>
-    body {
-      margin: 0;
-      font-family: Arial, sans-serif;
-      background: #0a0f1f;
-      color: #fff;
-    }
-    header {
-      position: sticky;
-      top: 0;
-      background: #0d1b3d;
-      padding: 12px;
-      display: flex;
-      gap: 10px;
-      z-index: 10;
-    }
-    input {
-      flex: 1;
-      padding: 10px;
-      border-radius: 6px;
-      border: none;
-    }
-    .grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
-      gap: 14px;
-      padding: 16px;
-    }
-    .card {
-      cursor: pointer;
-    }
-    .card img {
-      width: 100%;
-      border-radius: 10px;
-    }
-    .card h4 {
-      margin: 6px 0 0;
-      font-size: 14px;
-    }
-    .detail {
-      padding: 16px;
-    }
-    .back {
-      margin-bottom: 12px;
-      display: inline-block;
-      color: #4da3ff;
-      cursor: pointer;
-    }
-    iframe {
-      width: 100%;
-      height: 220px;
-      border-radius: 10px;
-      border: none;
-      margin-top: 12px;
-    }
-  </style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Zeldvorik Streamer - Pro</title>
+    <style>
+        :root { --primary: #e50914; --bg: #141414; --card: #1f1f1f; --text: #fff; --nav-bg: #181818; }
+        body { font-family: 'Segoe UI', sans-serif; background: var(--bg); color: var(--text); margin: 0; padding: 0; }
+        
+        /* HEADER & SEARCH */
+        header { padding: 15px; background: #000; position: sticky; top:0; z-index:100; display:flex; flex-direction: column; align-items: center; gap:15px; box-shadow: 0 4px 10px rgba(0,0,0,0.5); }
+        .search-bar { display: flex; gap: 10px; width: 100%; max-width: 600px; }
+        input { padding: 12px; flex: 1; background: #333; border: 1px solid #444; color: white; border-radius: 4px; font-size: 16px; }
+        button.btn-search { padding: 10px 25px; background: var(--primary); color: white; border: none; cursor: pointer; border-radius: 4px; font-weight:bold; }
+
+        /* TABS NAVIGATION */
+        .nav-tabs { display: flex; overflow-x: auto; width: 100%; max-width: 1200px; gap: 10px; padding: 5px 0; scrollbar-width: none; }
+        .nav-tabs::-webkit-scrollbar { display: none; }
+        .tab { padding: 8px 16px; background: var(--card); border-radius: 20px; font-size: 13px; white-space: nowrap; cursor: pointer; transition: 0.3s; border: 1px solid #333; color: #ccc; }
+        .tab.active { background: var(--primary); color: white; border-color: var(--primary); }
+        .tab:hover { background: #333; }
+
+        /* GRID */
+        .container { max-width: 1200px; margin: 20px auto; padding: 0 20px; }
+        .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 20px; margin-top: 20px; }
+        .card { background: var(--card); border-radius: 8px; cursor: pointer; transition: 0.3s; position: relative; overflow: hidden; }
+        .card:hover { transform: scale(1.05); z-index: 10; box-shadow: 0 0 15px rgba(229, 9, 20, 0.4); }
+        .badge { position: absolute; top: 8px; left: 8px; background: var(--primary); color: white; padding: 3px 8px; font-size: 10px; border-radius: 4px; font-weight: bold; text-transform: uppercase; z-index: 2; }
+        .card img { width: 100%; height: 240px; object-fit: cover; background: #222; }
+        .card-info { padding: 12px; }
+        .title { font-size: 14px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .year { font-size: 12px; color: #888; margin-top: 4px; }
+
+        /* MODAL */
+        .modal { display: none; position: fixed; top:0; left:0; width:100%; height:100%; background: rgba(0,0,0,0.95); z-index:200; align-items:flex-start; justify-content:center; overflow-y: auto; padding-top: 30px; }
+        .modal-box { background: #181818; width: 95%; max-width: 900px; border-radius: 8px; overflow: hidden; position: relative; margin-bottom: 50px; border: 1px solid #333; }
+        .video-wrap { position: relative; padding-bottom: 56.25%; height: 0; background: #000; }
+        .video-wrap iframe { position: absolute; top:0; left:0; width:100%; height:100%; border:0; }
+        .info-panel { padding: 25px; }
+        .close-btn { position: absolute; top: 10px; right: 15px; background: rgba(0,0,0,0.5); color: #fff; border: none; font-size: 24px; cursor: pointer; border-radius: 50%; width: 40px; height: 40px; z-index: 5; }
+        
+        /* SERIES CONTROLS */
+        .series-area { margin: 20px 0; padding: 15px; background: #252525; border-radius: 6px; display: none; border: 1px solid #444; }
+        .select-group { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 10px; }
+        select { padding: 10px; background: #333; color: white; border: 1px solid #555; border-radius: 4px; flex: 1; min-width: 120px; cursor: pointer; }
+        
+        .desc { color: #ccc; line-height: 1.6; font-size: 14px; }
+    </style>
 </head>
 <body>
 
 <header>
-  <input id="search" placeholder="Search film / series..." />
+    <div class="search-bar">
+        <input type="text" id="inpSearch" placeholder="Cari film atau series..." onkeypress="if(event.key==='Enter') doSearch()">
+        <button class="btn-search" onclick="doSearch()">Cari</button>
+    </div>
+    
+    <div class="nav-tabs" id="tabContainer">
+        <div class="tab active" onclick="loadCategory('trending', this)">🔥 Trending</div>
+        <div class="tab" onclick="loadCategory('indonesian-movies', this)">🇮🇩 Film Indo</div>
+        <div class="tab" onclick="loadCategory('indonesian-drama', this)">📺 Drama Indo</div>
+        <div class="tab" onclick="loadCategory('kdrama', this)">🇰🇷 K-Drama</div>
+        <div class="tab" onclick="loadCategory('short-tv', this)">📱 Short TV</div>
+        <div class="tab" onclick="loadCategory('anime', this)">🇯🇵 Anime</div>
+        <div class="tab" onclick="loadCategory('western-tv', this)">🇺🇸 Western TV</div>
+        <div class="tab" onclick="loadCategory('indo-dub', this)">🎙️ Indo Dub</div>
+        <div class="tab" onclick="loadCategory('adult-comedy', this)">🔞 Canda Dewasa</div>
+    </div>
 </header>
 
-<div id="app"></div>
+<div class="container">
+    <div id="statusMsg" style="text-align:center; color:#888; margin: 20px 0;">Memuat konten...</div>
+    <div id="resultGrid" class="grid"></div>
+</div>
+
+<div id="playerModal" class="modal">
+    <div class="modal-box">
+        <button class="close-btn" onclick="closeModal()">×</button>
+        <div class="video-wrap">
+            <iframe id="videoPlayer" allowfullscreen></iframe>
+        </div>
+        <div class="info-panel">
+            <h2 id="mTitle" style="margin:0">Judul Film</h2>
+            <div id="mMeta" style="color:#888; margin: 10px 0;">Tahun • Genre</div>
+            
+            <div id="seriesControls" class="series-area">
+                <div style="color:#aaa; font-size:14px; font-weight:bold;">Pilih Episode:</div>
+                <div class="select-group">
+                    <select id="seasonSelect" onchange="onSeasonChange()"></select>
+                    <select id="episodeSelect" onchange="onEpisodeChange()"></select>
+                </div>
+            </div>
+
+            <p id="mDesc" class="desc">Deskripsi...</p>
+        </div>
+    </div>
+</div>
 
 <script>
-const API = 'https://zeldvorik.ru/apiv3/api.php';
-const app = document.getElementById('app');
-const searchInput = document.getElementById('search');
+    const API_BASE = "https://zeldvorik.ru/apiv3/api.php";
+    let currentSeriesSeasons = null; 
 
-/* ================= HOME ================= */
-async function loadHome() {
-  app.innerHTML = '<div class="grid">Loading...</div>';
+    // Auto-load Trending saat buka halaman
+    window.onload = () => loadCategory('trending', document.querySelector('.tab'));
 
-  const res = await fetch(`${API}?action=trending&page=1`);
-  const data = await res.json();
+    // --- TAB & CATEGORY LOADER ---
+    async function loadCategory(action, element) {
+        // Update UI Tab Aktif
+        document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+        element.classList.add('active');
 
-  app.innerHTML = `
-    <div class="grid">
-      ${data.items.map(item => `
-        <div class="card" onclick="goDetail('${item.detailPath}')">
-          <img src="${item.poster}">
-          <h4>${item.title}</h4>
-        </div>
-      `).join('')}
-    </div>
-  `;
-}
+        const msg = document.getElementById('statusMsg');
+        const grid = document.getElementById('resultGrid');
+        msg.innerText = "Memuat..."; 
+        grid.innerHTML = "";
 
-/* ================= DETAIL ================= */
-async function loadDetail(detailPath) {
-  app.innerHTML = 'Loading detail...';
+        try {
+            const res = await fetch(`${API_BASE}?action=${action}&page=1`);
+            const json = await res.json();
+            const results = json.items || json.results || [];
 
-  const res = await fetch(`${API}?action=detail&detailPath=${detailPath}`);
-  const data = await res.json();
-  const item = data.item || data;
+            if (results.length > 0) {
+                msg.innerText = "";
+                renderGrid(results);
+            } else {
+                msg.innerText = "Konten tidak tersedia.";
+            }
+        } catch (e) {
+            msg.innerText = "Gagal memuat konten.";
+        }
+    }
 
-  app.innerHTML = `
-    <div class="detail">
-      <div class="back" onclick="goHome()">← Kembali</div>
-      <h2>${item.title}</h2>
-      <p>${item.genre} • ⭐ ${item.rating}</p>
-      <img src="${item.poster}" style="width:200px;border-radius:10px">
-      <p>${item.description || ''}</p>
+    // --- SEARCH ---
+    async function doSearch() {
+        const query = document.getElementById('inpSearch').value;
+        if(!query) return;
+        
+        // Nonaktifkan semua tab saat search
+        document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+        
+        const msg = document.getElementById('statusMsg');
+        const grid = document.getElementById('resultGrid');
+        msg.innerText = "Mencari: " + query; 
+        grid.innerHTML = "";
 
-      ${item.playerUrl ? `
-        <iframe src="${item.playerUrl}" allowfullscreen></iframe>
-      ` : ''}
-    </div>
-  `;
-}
+        try {
+            const res = await fetch(`${API_BASE}?action=search&q=${encodeURIComponent(query)}`);
+            const json = await res.json();
+            const results = json.items || json.results || [];
 
-/* ================= ROUTER ================= */
-function router() {
-  const hash = location.hash;
+            if (results.length > 0) {
+                msg.innerText = `Hasil pencarian untuk "${query}"`;
+                renderGrid(results);
+            } else {
+                msg.innerText = "Tidak ditemukan hasil untuk '" + query + "'";
+            }
+        } catch (e) {
+            msg.innerText = "Error dalam pencarian.";
+        }
+    }
 
-  if (hash.startsWith('#/detail/')) {
-    const detailPath = hash.replace('#/detail/', '');
-    loadDetail(detailPath);
-  } else {
-    loadHome();
-  }
-}
+    function renderGrid(items) {
+        document.getElementById('resultGrid').innerHTML = items.map(item => `
+            <div class="card" onclick="getDetail('${item.detailPath}')">
+                <div class="badge">${item.type === 'tv' ? 'SERIES' : (item.type || 'MOVIE')}</div>
+                <img src="${item.poster || ''}" onerror="this.src='https://via.placeholder.com/300x450?text=No+Poster'">
+                <div class="card-info">
+                    <div class="title">${item.title}</div>
+                    <div class="year">${item.year || '-'}</div>
+                </div>
+            </div>
+        `).join('');
+    }
 
-function goDetail(path) {
-  location.hash = '#/detail/' + path;
-}
+    // --- DETAIL & PLAYER LOGIC ---
+    async function getDetail(detailPath) {
+        try {
+            const res = await fetch(`${API_BASE}?action=detail&detailPath=${encodeURIComponent(detailPath)}`);
+            const json = await res.json();
+            if(json.success && json.data) {
+                openModal(json.data);
+            } else {
+                alert("Gagal memuat detail video.");
+            }
+        } catch (e) {
+            alert("Koneksi bermasalah.");
+        }
+    }
 
-function goHome() {
-  location.hash = '';
-}
+    function openModal(data) {
+        const modal = document.getElementById('playerModal');
+        const player = document.getElementById('videoPlayer');
+        const seriesCtrl = document.getElementById('seriesControls');
+        
+        document.getElementById('mTitle').innerText = data.title;
+        document.getElementById('mMeta').innerText = `${data.year || ''} • ${data.genre || 'General'}`;
+        document.getElementById('mDesc').innerText = data.description || "Tidak ada deskripsi tersedia.";
+        
+        player.src = "";
+        seriesCtrl.style.display = "none";
+        currentSeriesSeasons = null;
 
-/* ================= SEARCH ================= */
-let debounce;
-searchInput.addEventListener('input', () => {
-  clearTimeout(debounce);
-  debounce = setTimeout(async () => {
-    const q = searchInput.value.trim();
-    if (!q) return loadHome();
+        if (data.type === 'tv' || (data.seasons && data.seasons.length > 0)) {
+            seriesCtrl.style.display = "block";
+            currentSeriesSeasons = data.seasons;
+            const sSelect = document.getElementById('seasonSelect');
+            sSelect.innerHTML = data.seasons.map((s, idx) => 
+                `<option value="${idx}">Season ${s.season || (idx+1)}</option>`
+            ).join('');
+            onSeasonChange(); 
+        } else {
+            if (data.playerUrl) {
+                player.src = data.playerUrl;
+            } else {
+                alert("Link video tidak ditemukan.");
+            }
+        }
+        modal.style.display = "flex";
+    }
 
-    app.innerHTML = 'Searching...';
-    const res = await fetch(`${API}?action=search&q=${q}`);
-    const data = await res.json();
+    function onSeasonChange() {
+        if (!currentSeriesSeasons) return;
+        const sIdx = document.getElementById('seasonSelect').value;
+        const seasonData = currentSeriesSeasons[sIdx];
+        const epSelect = document.getElementById('episodeSelect');
 
-    app.innerHTML = `
-      <div class="grid">
-        ${data.items.map(item => `
-          <div class="card" onclick="goDetail('${item.detailPath}')">
-            <img src="${item.poster}">
-            <h4>${item.title}</h4>
-          </div>
-        `).join('')}
-      </div>
-    `;
-  }, 400);
-});
+        if (seasonData.episodes && seasonData.episodes.length > 0) {
+            epSelect.innerHTML = seasonData.episodes.map(ep => 
+                `<option value="${ep.playerUrl}">Episode ${ep.episode}</option>`
+            ).join('');
+            onEpisodeChange();
+        } else {
+            epSelect.innerHTML = "<option>Kosong</option>";
+        }
+    }
 
-/* INIT */
-window.addEventListener('load', router);
-window.addEventListener('hashchange', router);
+    function onEpisodeChange() {
+        const url = document.getElementById('episodeSelect').value;
+        if (url && url !== "undefined") {
+            document.getElementById('videoPlayer').src = url;
+        }
+    }
+
+    function closeModal() {
+        document.getElementById('playerModal').style.display = 'none';
+        document.getElementById('videoPlayer').src = "";
+    }
+    
+    window.onclick = e => { if(e.target == document.getElementById('playerModal')) closeModal(); }
 </script>
-
 </body>
 </html>
