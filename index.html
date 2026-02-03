@@ -19,7 +19,14 @@
         .nav-tabs::-webkit-scrollbar { display: none; }
         .tab { padding: 8px 16px; background: var(--card); border-radius: 20px; font-size: 13px; white-space: nowrap; cursor: pointer; transition: 0.3s; border: 1px solid #333; color: #ccc; }
         .tab.active { background: var(--primary); color: white; border-color: var(--primary); }
-        .tab:hover { background: #333; }
+        
+        /* RESUME FEATURE UI */
+        .resume-banner { 
+            display: none; background: #222; border: 1px solid #444; border-radius: 8px; 
+            padding: 15px; margin-bottom: 20px; align-items: center; justify-content: space-between;
+            animation: fadeIn 0.5s ease;
+        }
+        @keyframes fadeIn { from {opacity:0; transform: translateY(-10px);} to {opacity:1; transform: translateY(0);} }
 
         /* GRID */
         .container { max-width: 1200px; margin: 20px auto; padding: 0 20px; }
@@ -30,7 +37,6 @@
         .card img { width: 100%; height: 240px; object-fit: cover; background: #222; }
         .card-info { padding: 12px; }
         .title { font-size: 14px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-        .year { font-size: 12px; color: #888; margin-top: 4px; }
 
         /* MODAL */
         .modal { display: none; position: fixed; top:0; left:0; width:100%; height:100%; background: rgba(0,0,0,0.95); z-index:200; align-items:flex-start; justify-content:center; overflow-y: auto; padding-top: 30px; }
@@ -44,8 +50,6 @@
         .series-area { margin: 20px 0; padding: 15px; background: #252525; border-radius: 6px; display: none; border: 1px solid #444; }
         .select-group { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 10px; }
         select { padding: 10px; background: #333; color: white; border: 1px solid #555; border-radius: 4px; flex: 1; min-width: 120px; cursor: pointer; }
-        
-        .desc { color: #ccc; line-height: 1.6; font-size: 14px; }
     </style>
 </head>
 <body>
@@ -55,7 +59,6 @@
         <input type="text" id="inpSearch" placeholder="Cari film atau series..." onkeypress="if(event.key==='Enter') doSearch()">
         <button class="btn-search" onclick="doSearch()">Cari</button>
     </div>
-    
     <div class="nav-tabs" id="tabContainer">
         <div class="tab active" onclick="loadCategory('trending', this)">🔥 Trending</div>
         <div class="tab" onclick="loadCategory('indonesian-movies', this)">🇮🇩 Film Indo</div>
@@ -65,11 +68,19 @@
         <div class="tab" onclick="loadCategory('anime', this)">🇯🇵 Anime</div>
         <div class="tab" onclick="loadCategory('western-tv', this)">🇺🇸 Western TV</div>
         <div class="tab" onclick="loadCategory('indo-dub', this)">🎙️ Indo Dub</div>
-        <div class="tab" onclick="loadCategory('adult-comedy', this)">🔞 Canda Dewasa</div>
     </div>
 </header>
 
 <div class="container">
+    <div id="resumeBanner" class="resume-banner">
+        <div>
+            <div style="color:var(--primary); font-weight:bold; font-size:12px;">LANJUTKAN NONTON:</div>
+            <div id="resumeTitle" style="font-size:16px; font-weight:bold; margin-top:4px;">Judul Film</div>
+            <div id="resumeInfo" style="color:#aaa; font-size:13px;">Season 1 - Episode 5</div>
+        </div>
+        <button class="btn-search" id="resumeBtn">Putar Sekarang</button>
+    </div>
+
     <div id="statusMsg" style="text-align:center; color:#888; margin: 20px 0;">Memuat konten...</div>
     <div id="resultGrid" class="grid"></div>
 </div>
@@ -78,12 +89,11 @@
     <div class="modal-box">
         <button class="close-btn" onclick="closeModal()">×</button>
         <div class="video-wrap">
-            <iframe id="videoPlayer" allowfullscreen></iframe>
+            <iframe id="videoPlayer" allowfullscreen sandbox="allow-forms allow-pointer-lock allow-same-origin allow-scripts allow-top-navigation"></iframe>
         </div>
         <div class="info-panel">
             <h2 id="mTitle" style="margin:0">Judul Film</h2>
             <div id="mMeta" style="color:#888; margin: 10px 0;">Tahun • Genre</div>
-            
             <div id="seriesControls" class="series-area">
                 <div style="color:#aaa; font-size:14px; font-weight:bold;">Pilih Episode:</div>
                 <div class="select-group">
@@ -91,79 +101,74 @@
                     <select id="episodeSelect" onchange="onEpisodeChange()"></select>
                 </div>
             </div>
-
-            <p id="mDesc" class="desc">Deskripsi...</p>
+            <p id="mDesc" style="color:#ccc; font-size:14px;">Deskripsi...</p>
         </div>
     </div>
 </div>
 
 <script>
     const API_BASE = "https://zeldvorik.ru/apiv3/api.php";
-    let currentSeriesSeasons = null; 
+    let currentSeriesData = null; 
 
-    // Auto-load Trending saat buka halaman
-    window.onload = () => loadCategory('trending', document.querySelector('.tab'));
+    window.onload = () => {
+        checkWatchHistory();
+        loadCategory('trending', document.querySelector('.tab'));
+    };
 
-    // --- TAB & CATEGORY LOADER ---
+    // --- RIWAYAT LOGIC ---
+    function saveHistory(data, seasonIdx, episodeIdx) {
+        const history = {
+            title: data.title,
+            detailPath: data.detailPath,
+            seasonIdx: seasonIdx,
+            episodeIdx: episodeIdx,
+            timestamp: new Date().getTime()
+        };
+        localStorage.setItem('lastWatch', JSON.stringify(history));
+        checkWatchHistory();
+    }
+
+    function checkWatchHistory() {
+        const lastWatch = JSON.parse(localStorage.getItem('lastWatch'));
+        const banner = document.getElementById('resumeBanner');
+        if (lastWatch) {
+            banner.style.display = 'flex';
+            document.getElementById('resumeTitle').innerText = lastWatch.title;
+            document.getElementById('resumeInfo').innerText = `Terakhir dibuka: Season ${parseInt(lastWatch.seasonIdx)+1} - Episode ${parseInt(lastWatch.episodeIdx)+1}`;
+            document.getElementById('resumeBtn').onclick = () => getDetail(lastWatch.detailPath, true);
+        }
+    }
+
+    // --- API LOADER ---
     async function loadCategory(action, element) {
-        // Update UI Tab Aktif
         document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
         element.classList.add('active');
-
-        const msg = document.getElementById('statusMsg');
         const grid = document.getElementById('resultGrid');
-        msg.innerText = "Memuat..."; 
         grid.innerHTML = "";
-
         try {
             const res = await fetch(`${API_BASE}?action=${action}&page=1`);
             const json = await res.json();
-            const results = json.items || json.results || [];
-
-            if (results.length > 0) {
-                msg.innerText = "";
-                renderGrid(results);
-            } else {
-                msg.innerText = "Konten tidak tersedia.";
-            }
-        } catch (e) {
-            msg.innerText = "Gagal memuat konten.";
-        }
+            renderGrid(json.items || json.results || []);
+        } catch (e) { console.error(e); }
     }
 
-    // --- SEARCH ---
     async function doSearch() {
         const query = document.getElementById('inpSearch').value;
         if(!query) return;
-        
-        // Nonaktifkan semua tab saat search
-        document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
-        
-        const msg = document.getElementById('statusMsg');
         const grid = document.getElementById('resultGrid');
-        msg.innerText = "Mencari: " + query; 
-        grid.innerHTML = "";
-
+        grid.innerHTML = "Mencari...";
         try {
             const res = await fetch(`${API_BASE}?action=search&q=${encodeURIComponent(query)}`);
             const json = await res.json();
-            const results = json.items || json.results || [];
-
-            if (results.length > 0) {
-                msg.innerText = `Hasil pencarian untuk "${query}"`;
-                renderGrid(results);
-            } else {
-                msg.innerText = "Tidak ditemukan hasil untuk '" + query + "'";
-            }
-        } catch (e) {
-            msg.innerText = "Error dalam pencarian.";
-        }
+            renderGrid(json.items || json.results || []);
+        } catch (e) { console.error(e); }
     }
 
     function renderGrid(items) {
+        document.getElementById('statusMsg').innerText = items.length ? "" : "Tidak ada konten.";
         document.getElementById('resultGrid').innerHTML = items.map(item => `
             <div class="card" onclick="getDetail('${item.detailPath}')">
-                <div class="badge">${item.type === 'tv' ? 'SERIES' : (item.type || 'MOVIE')}</div>
+                <div class="badge">${item.type === 'tv' ? 'SERIES' : 'MOVIE'}</div>
                 <img src="${item.poster || ''}" onerror="this.src='https://via.placeholder.com/300x450?text=No+Poster'">
                 <div class="card-info">
                     <div class="title">${item.title}</div>
@@ -173,72 +178,72 @@
         `).join('');
     }
 
-    // --- DETAIL & PLAYER LOGIC ---
-    async function getDetail(detailPath) {
+    // --- DETAIL & PLAYER ---
+    async function getDetail(detailPath, isResume = false) {
         try {
             const res = await fetch(`${API_BASE}?action=detail&detailPath=${encodeURIComponent(detailPath)}`);
             const json = await res.json();
-            if(json.success && json.data) {
-                openModal(json.data);
-            } else {
-                alert("Gagal memuat detail video.");
+            if(json.success) {
+                // Simpan detailPath ke data agar bisa disimpan ke history
+                json.data.detailPath = detailPath;
+                openModal(json.data, isResume);
             }
-        } catch (e) {
-            alert("Koneksi bermasalah.");
-        }
+        } catch (e) { alert("Gagal memuat detail."); }
     }
 
-    function openModal(data) {
+    function openModal(data, isResume) {
+        currentSeriesData = data;
         const modal = document.getElementById('playerModal');
         const player = document.getElementById('videoPlayer');
         const seriesCtrl = document.getElementById('seriesControls');
         
         document.getElementById('mTitle').innerText = data.title;
-        document.getElementById('mMeta').innerText = `${data.year || ''} • ${data.genre || 'General'}`;
-        document.getElementById('mDesc').innerText = data.description || "Tidak ada deskripsi tersedia.";
+        document.getElementById('mMeta').innerText = `${data.year} • ${data.genre || 'General'}`;
+        document.getElementById('mDesc').innerText = data.description || "";
         
         player.src = "";
         seriesCtrl.style.display = "none";
-        currentSeriesSeasons = null;
 
         if (data.type === 'tv' || (data.seasons && data.seasons.length > 0)) {
             seriesCtrl.style.display = "block";
-            currentSeriesSeasons = data.seasons;
             const sSelect = document.getElementById('seasonSelect');
-            sSelect.innerHTML = data.seasons.map((s, idx) => 
-                `<option value="${idx}">Season ${s.season || (idx+1)}</option>`
-            ).join('');
-            onSeasonChange(); 
-        } else {
-            if (data.playerUrl) {
-                player.src = data.playerUrl;
+            sSelect.innerHTML = data.seasons.map((s, idx) => `<option value="${idx}">Season ${s.season || (idx+1)}</option>`).join('');
+            
+            // LOGIKA RESUME: Jika dari tombol resume, set season & episode sesuai history
+            if(isResume) {
+                const history = JSON.parse(localStorage.getItem('lastWatch'));
+                sSelect.value = history.seasonIdx;
+                onSeasonChange(history.episodeIdx);
             } else {
-                alert("Link video tidak ditemukan.");
+                onSeasonChange(); 
             }
+        } else {
+            if (data.playerUrl) player.src = data.playerUrl;
         }
         modal.style.display = "flex";
     }
 
-    function onSeasonChange() {
-        if (!currentSeriesSeasons) return;
+    function onSeasonChange(targetEpsIdx = 0) {
         const sIdx = document.getElementById('seasonSelect').value;
-        const seasonData = currentSeriesSeasons[sIdx];
+        const seasonData = currentSeriesData.seasons[sIdx];
         const epSelect = document.getElementById('episodeSelect');
 
-        if (seasonData.episodes && seasonData.episodes.length > 0) {
-            epSelect.innerHTML = seasonData.episodes.map(ep => 
-                `<option value="${ep.playerUrl}">Episode ${ep.episode}</option>`
-            ).join('');
+        if (seasonData.episodes) {
+            epSelect.innerHTML = seasonData.episodes.map((ep, idx) => `<option value="${idx}">Episode ${ep.episode}</option>`).join('');
+            epSelect.value = targetEpsIdx;
             onEpisodeChange();
-        } else {
-            epSelect.innerHTML = "<option>Kosong</option>";
         }
     }
 
     function onEpisodeChange() {
-        const url = document.getElementById('episodeSelect').value;
-        if (url && url !== "undefined") {
-            document.getElementById('videoPlayer').src = url;
+        const sIdx = document.getElementById('seasonSelect').value;
+        const eIdx = document.getElementById('episodeSelect').value;
+        const epData = currentSeriesData.seasons[sIdx].episodes[eIdx];
+        
+        if (epData && epData.playerUrl) {
+            document.getElementById('videoPlayer').src = epData.playerUrl;
+            // SIMPAN KE HISTORY setiap kali ganti episode
+            saveHistory(currentSeriesData, sIdx, eIdx);
         }
     }
 
